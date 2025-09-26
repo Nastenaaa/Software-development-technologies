@@ -1,0 +1,127 @@
+@startuml
+title Component Diagram — "Personal Accounting"
+
+skinparam componentStyle uml2
+skinparam packageStyle rectangle
+skinparam shadowing true
+skinparam linetype ortho
+top to bottom direction
+
+' ===================== CLIENT (top-left) =====================
+package "Client (Desktop)" as CLIENT {
+  artifact "PersonalAccountingClient.jar" as ClientJar
+  interface "REST client" as IRestClient
+  ClientJar - IRestClient
+}
+
+' ===================== SERVER (center, big frame) =====================
+package "Server (Monolith SOA)" as SERVER {
+  top to bottom direction
+
+  ' REST API centered on top
+  component "REST API" as RestAPI
+
+  ' ------- Services (row) -------
+  left to right direction
+  component "ExportService"    as SExport
+  component "ImportService"    as SImport
+  component "RecurringService" as SRecurring
+  component "FinanceService"   as SFinance
+  component "AuthService"      as SAuth
+
+  ' Public interfaces (provided) for each service
+  interface "IExportAPI"   as IExport
+  interface "IImportAPI"   as IImport
+  interface "IRecurringAPI" as IRecurring
+  interface "IFinanceAPI"  as IFinance
+  interface "IAuthAPI"     as IAuth
+
+  SExport - IExport
+  SImport - IImport
+  SRecurring - IRecurring
+  SFinance - IFinance
+  SAuth - IAuth
+
+  ' Fan from REST API to services
+  IRestClient --> RestAPI
+  RestAPI --> SExport
+  RestAPI --> SImport
+  RestAPI --> SRecurring
+  RestAPI --> SFinance
+  RestAPI --> SAuth
+}
+
+' Keep client above-left of server
+CLIENT -[hidden]-> SERVER
+
+' ===================== DATA ACCESS (bottom band) =====================
+package "Data Access" as DATA {
+  left to right direction
+
+  interface "IRepository<T>" as IRepository
+
+  component "TransactionRepository"       as RepoTxn  <<repository>>
+  component "AccountRepository"           as RepoAcc  <<repository>>
+  component "UserRepository"              as RepoUser <<repository>>
+  component "CategoryRepository"          as RepoCat  <<repository>>
+  component "RecurringRuleRepository"     as RepoRec  <<repository>>
+  component "AttachmentRepository"        as RepoAtt  <<repository>>
+
+  RepoTxn - IRepository
+  RepoAcc - IRepository
+  RepoUser - IRepository
+  RepoCat - IRepository
+  RepoRec - IRepository
+  RepoAtt - IRepository
+}
+
+' Place Data Access below server
+SERVER -[hidden]down- DATA
+
+' ------- Service -> Repository dependencies (as on the screenshot) -------
+SExport   ..> RepoTxn
+SExport   ..> RepoCat
+SExport   ..> RepoAcc
+SImport   ..> RepoTxn
+SImport   ..> RepoCat
+SImport   ..> RepoAcc
+SRecurring ..> RepoRec
+SRecurring ..> RepoTxn
+SFinance  ..> RepoTxn
+SFinance  ..> RepoAcc
+SFinance  ..> RepoCat
+SFinance  ..> RepoUser
+SAuth     ..> RepoUser
+
+' ===================== DATABASE & FILE STORAGE (bottom) =====================
+database "RDBMS (PostgreSQL/MySQL)" as DB
+node "File Storage (Receipts)" as FS
+
+DATA --> DB
+RepoAtt --> FS
+SImport ..> FS
+SExport ..> FS
+
+' ===================== EXTERNAL SERVICES (right cloud) =====================
+cloud "External Services" as EXT {
+  component "Currency Rates API" as Rates
+  component "Email (SMTP)" as Email
+}
+
+' Required interfaces (to show contracts)
+interface "ICurrencyRates" as ICur
+interface "IEmailGateway"  as IEmail
+
+Rates - ICur
+Email - IEmail
+
+SFinance ..> ICur
+SRecurring ..> IEmail
+
+' ===================== Cosmetic positioning (like your layout) =====================
+SERVER -[hidden]-> EXT
+DATA   -[hidden]-> FS
+DB     -[hidden]-> FS
+EXT    -[hidden]down-> FS
+
+@enduml
