@@ -1,0 +1,85 @@
+@startuml
+title Deployment — "Personal Accounting" (client–server, SOA)
+
+skinparam shadowing true
+skinparam node {
+  BackgroundColor white
+  BorderColor black
+}
+skinparam rectangle {
+  BackgroundColor white
+  BorderColor black
+}
+skinparam cloud {
+  BackgroundColor white
+  BorderColor black
+}
+top to bottom direction
+
+' ===== USER PC (зверху) =====
+node "User PC" as USER {
+  node "JRE" <<executionEnvironment>> as USER_JRE
+  artifact "PersonalAccountingClient.jar" as CLIENT
+  CLIENT -down-> USER_JRE
+}
+
+' ===== APP SERVER (під клієнтом) =====
+node "App Server" as APP {
+  node "JRE / App Container" <<executionEnvironment>> as APPJRE {
+    ' REST API зверху по центру
+    rectangle "REST API" as REST
+
+    ' Ряд сервісів зліва -> праворуч: Export, Import, Recurring, Finance, Auth
+    left to right direction
+    rectangle "ExportService"    as S_EXP
+    rectangle "ImportService"    as S_IMP
+    rectangle "RecurringService" as S_REC
+    rectangle "FinanceService"   as S_FIN
+    rectangle "AuthService"      as S_AUTH
+
+    ' «Віяло» від REST до сервісів
+    REST -down-> S_EXP
+    REST -down-> S_IMP
+    REST -down-> S_REC
+    REST -down-> S_FIN
+    REST -down-> S_AUTH
+
+    ' Локальне сховище вкладень у нижньому лівому куті
+    rectangle "receipts (attachments)" as STORE
+    S_IMP ..> STORE : file I/O
+    S_EXP ..> STORE : file I/O
+  }
+}
+
+' Клієнт -> REST
+CLIENT --> REST : HTTPS/REST
+
+' ===== DB SERVER (праворуч унизу) =====
+left to right direction
+node "DB Server\n(PostgreSQL/MySQL)" as DBNODE {
+  database "PersonalAccountingDB" as DB
+}
+
+' JDBC з усіх сервісів
+S_EXP ..> DB : JDBC
+S_IMP ..> DB : JDBC
+S_REC ..> DB : JDBC
+S_FIN ..> DB : JDBC
+S_AUTH ..> DB : JDBC
+
+' ===== ЗОВНІШНІ СЕРВІСИ (ще правіше) =====
+cloud "External Services" as EXT {
+  node "Currency Rates API" <<external>> as RATES
+  node "Email (SMTP)"       <<external>> as SMTP
+}
+
+S_FIN ..> RATES : HTTPS (rates)
+S_REC ..> SMTP : TLS (notifications)
+
+' — косметичні приховані зв’язки, щоб зберегти компоновку як на скрині —
+USER -[hidden]-> APP
+APP  -[hidden]-> DBNODE
+DBNODE -[hidden]-> EXT
+STORE -[hidden]down-> DB
+
+@enduml
