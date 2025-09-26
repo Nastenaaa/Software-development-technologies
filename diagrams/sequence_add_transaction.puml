@@ -1,0 +1,54 @@
+@startuml
+title Sequence — Add Income/Expense
+
+actor User
+participant "Client App" as Client
+participant "REST API" as API
+participant "FinanceService" as Fin
+participant "CategoryRepository" as CatRepo
+participant "AccountRepository" as AccRepo
+participant "TransactionRepository" as TxRepo
+participant "CurrencyRates API" as FX
+
+== Передумови: автентифікація, є рахунок і категорія ==
+User -> Client: Обрати "Додати транзакцію"
+Client -> API: GET /form/add-transaction
+API -> Fin: getFormMeta()
+Fin -> CatRepo: listCategories()
+Fin -> AccRepo: listAccounts()
+Fin --> API: метадані (рахунки, категорії)
+API --> Client: форма
+
+User -> Client: Заповнює (рахунок, категорія, дата, сума, тип, примітка [+вкладення?])
+Client -> API: POST /transactions (payload)
+API -> Fin: createTransaction(dto)
+
+alt Валідація введення
+  Fin -> Fin: validate(dto)
+  alt Немає категорії
+    Fin --> API: error "Виберіть/створіть категорію"
+    API --> Client: показати повідомлення
+    return
+  end
+end
+
+opt Валюта транзакції ≠ валюта рахунку
+  Fin -> FX: GET /latest?base=...
+  FX --> Fin: курс
+  Fin -> Fin: конвертація суми
+end
+
+Fin -> TxRepo: save(transaction)
+Fin -> AccRepo: updateBalance(accountId, delta)
+TxRepo --> Fin: id транзакції
+AccRepo --> Fin: новий баланс
+
+opt Додано вкладення (скан чеку)
+  Client -> API: POST /transactions/{id}/attachment
+  API -> Fin: attachReceipt(id, file)
+  Fin -> TxRepo: saveAttachment(id, meta/blob)
+end
+
+Fin --> API: success {id, newBalance}
+API --> Client: Підтвердження збереження
+@enduml
