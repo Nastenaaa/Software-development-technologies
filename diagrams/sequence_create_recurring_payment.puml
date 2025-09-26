@@ -1,0 +1,52 @@
+@startuml
+title Sequence — Create Recurring Payment
+
+actor User
+participant "Client App" as Client
+participant "REST API" as API
+participant "RecurringService" as Rec
+participant "RecurringRuleRepository" as RuleRepo
+participant "TransactionRepository" as TxRepo
+participant "AccountRepository" as AccRepo
+participant "Email (SMTP)" as Mail
+
+== Створення правила ==
+User -> Client: Обрати "Створити періодичну транзакцію"
+Client -> API: GET /recurring/form
+API -> Rec: getFormMeta()
+Rec --> API: періодичності/підказки
+API --> Client: форма
+
+User -> Client: Заповнює (рах., категорія, сума, періодичність, старт)
+Client -> API: POST /recurring (payload)
+API -> Rec: createRule(dto)
+
+alt Періодичність некоректна
+  Rec --> API: error "Неправильний інтервал"
+  API --> Client: показати повідомлення
+  return
+end
+
+Rec -> RuleRepo: save(rule)
+RuleRepo --> Rec: ruleId
+Rec --> API: success {ruleId, nextRun}
+API --> Client: Підтвердження
+
+== Виконання за розкладом (пізніше) ==
+participant "Scheduler/Worker" as Sch
+Sch -> Rec: runDueRules(now)
+Rec -> RuleRepo: findDue(now)
+RuleRepo --> Rec: список правил
+
+loop для кожного правила
+  Rec -> AccRepo: checkBalance(accountId)
+  alt достатньо коштів
+    Rec -> TxRepo: create(transaction)
+    Rec -> AccRepo: updateBalance(accountId, -sum)
+    TxRepo --> Rec: id
+  else недостатньо коштів
+    Rec -> TxRepo: create(transaction, status="pending")
+    Rec -> Mail: send("Недостатньо коштів, підтвердити/відкласти")
+  end
+end
+@enduml
