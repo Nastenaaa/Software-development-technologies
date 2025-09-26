@@ -1,0 +1,73 @@
+@startuml
+title Deployment — "Personal Accounting" (client–server, SOA)
+
+legend right
+  Protocols/ports:
+  - HTTPS :443 (REST, Currency API)
+  - JDBC  :5432/:3306 (PostgreSQL/MySQL)
+  - SMTPS :465/:587 (Email with TLS)
+endlegend
+
+' ==== Edge / Client side ====
+node "User PC" <<device>> as client {
+  artifact "PersonalAccountingClient.jar" as clientJar
+  node "JRE" <<executionEnvironment>> as clientJre
+}
+
+' ==== DMZ / Edge ====
+node "Load Balancer" <<device>> as lb
+
+' ==== App tier ====
+node "App Server xN" <<node>> as app {
+  node "JRE / App Container" <<executionEnvironment>> as appJre {
+    artifact "personal-accounting.war" as serverWar
+
+    component "REST API" as rest
+    component "FinanceService" as finance
+    component "RecurringService\n(Scheduler/Worker)" as recurring
+    component "ExportService" as export
+    component "ImportService" as import
+    component "AuthService" as auth
+  }
+}
+
+' ==== Data tier ====
+node "DB Server\n(PostgreSQL/MySQL)" <<node>> as db {
+  database "PersonalAccountingDB" as dbms
+}
+node "Object Storage\n(Receipts)" <<node>> as fs
+
+' ==== External integrations ====
+cloud "External Services" as ext {
+  node "Currency Rates API" <<external>> as rates
+  node "Email (SMTP)" <<external>> as smtp
+}
+
+' ===== Connections =====
+clientJar -down-> clientJre
+clientJar -- HTTPS :443 --> lb
+lb -- HTTPS :443 --> rest
+
+rest --> finance
+rest --> recurring
+rest --> export
+rest --> import
+rest --> auth
+
+finance ..> dbms : JDBC :5432/:3306
+recurring ..> dbms : JDBC
+export ..> dbms : JDBC
+import ..> dbms : JDBC
+auth ..> dbms : JDBC
+
+export ..> fs : HTTPS file I/O
+import ..> fs : HTTPS file I/O
+
+finance ..> rates : HTTPS :443 (get FX rates)
+recurring ..> smtp : SMTPS :465/:587 (notifications)
+
+' security notes
+lb -[#blue]- app : TLS termination / passthrough
+db -[#gray]- app : private subnet / VPN
+
+@enduml
