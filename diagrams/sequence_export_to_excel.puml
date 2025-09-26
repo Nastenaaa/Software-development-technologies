@@ -1,0 +1,35 @@
+@startuml
+title Sequence — Export to Excel
+
+actor User
+participant "Client App" as Client
+participant "REST API" as API
+participant "ExportService" as Exp
+participant "TransactionRepository" as TxRepo
+participant "File Storage" as FS
+
+User -> Client: Обрати "Експортувати дані"
+Client -> API: GET /export/form
+API -> Exp: getFilters()
+Exp --> API: доступні періоди/поля
+API --> Client: форма
+
+User -> Client: Обрати період (напр., за місяць)
+Client -> API: POST /export (period)
+API -> Exp: export(period)
+
+Exp -> TxRepo: findByPeriod(period)
+TxRepo --> Exp: транзакції[]
+
+alt Немає даних
+  Exp --> API: error "Немає даних для експорту"
+  API --> Client: Показати повідомлення
+  return
+end
+
+Exp -> Exp: згенерувати Excel (xlsx)
+Exp -> FS: save(file)
+FS --> Exp: url/descriptor
+Exp --> API: downloadLink(url)
+API --> Client: Посилання/кнопка "Завантажити"
+@enduml
