@@ -1,11 +1,15 @@
 package app.model;
 
+import app.patterns.state.*;
+
 public class Account {
     private int id;
     private User user;
     private String name;
     private String currency;
     private String type;
+
+    private AccountState state = new ActiveState();
 
     public Account() {}
 
@@ -16,6 +20,24 @@ public class Account {
         this.currency = currency;
         this.type = type;
     }
+
+
+    public void activate() {
+        this.state = new ActiveState();
+    }
+
+    public void block() {
+        this.state = new BlockedState();
+    }
+
+    public void close() {
+        this.state = new ClosedState();
+    }
+
+    public AccountState getState() {
+        return state;
+    }
+
 
     public int getId() { return id; }
     public void setId(int id) { this.id = id; }
@@ -36,6 +58,8 @@ public class Account {
     public String toString() {
         return "Account{id=" + id +
                 ", user=" + (user != null ? user.getId() : null) +
-                ", name='" + name + "', currency='" + currency + "', type='" + type + "'}";
+                ", name='" + name + "', currency='" + currency + "', type='" + type + "'" +
+                ", state=" + (state != null ? state.getName() : "null") +
+                "}";
     }
 }

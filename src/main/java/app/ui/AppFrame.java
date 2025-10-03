@@ -2,8 +2,8 @@ package app.ui;
 
 import app.model.User;
 import app.repo.AccountRepository;
+import app.repo.CategoryRepository;
 import app.repo.TransactionRepository;
-import app.repo.CategoryRepository;     // ← додано
 import app.service.ExportService;
 import app.service.FinanceService;
 
@@ -14,10 +14,11 @@ public class AppFrame extends JFrame {
 
     public AppFrame(User user,
                     AccountRepository accountRepo,
-                    TransactionRepository txRepo,
+                    TransactionRepository txRepo,     // третій
                     FinanceService financeService,
                     ExportService exportService,
-                    CategoryRepository categoryRepo) {
+                    CategoryRepository categoryRepo) { // шостий (останній)
+
 
         super("Personal Accounting");
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
@@ -25,16 +26,15 @@ public class AppFrame extends JFrame {
         setLocationRelativeTo(null);
         setLayout(new BorderLayout());
 
-        // Вкладки
         JTabbedPane tabs = new JTabbedPane();
 
-        // 1) Додати транзакцію (передаємо categoryRepo)
+        // 1) Додати транзакцію (Варіант B: потрібні categoryRepo і txRepo)
         tabs.addTab(
                 "Додати транзакцію",
-                new AddTransactionPanel(user, accountRepo, categoryRepo, financeService)
+                new AddTransactionPanel(user, accountRepo, categoryRepo, txRepo, financeService)
         );
 
-        // 2) Перегляд / Експорт
+        // 2) Перегляд / Експорт (без змін)
         tabs.addTab(
                 "Транзакції / Експорт",
                 new TransactionsPanel(user, txRepo, exportService, accountRepo)

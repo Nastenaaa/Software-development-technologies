@@ -7,14 +7,16 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
+import java.math.BigDecimal;
 
 public interface TransactionRepository {
     Transaction save(Transaction t);
 
     List<Transaction> findByUserAndPeriod(User user, LocalDate from, LocalDate to);
 
-    /** Баланс по кожному рахунку користувача (account_id -> сума) */
     Map<Integer, BigDecimal> balancesByUser(int userId);
+
+    BigDecimal balanceForAccount(int accountId);
 }
 
 

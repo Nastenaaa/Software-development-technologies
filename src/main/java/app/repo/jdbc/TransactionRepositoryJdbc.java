@@ -130,4 +130,19 @@ public class TransactionRepositoryJdbc implements TransactionRepository {
         }
         return map;
     }
+    @Override
+    public BigDecimal balanceForAccount(int accountId) {
+        String sql = "SELECT COALESCE(SUM(amount), 0) FROM transactions WHERE account_id = ?";
+        try (Connection c = Db.get();
+             PreparedStatement ps = c.prepareStatement(sql)) {
+            ps.setInt(1, accountId);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) return rs.getBigDecimal(1);
+            }
+            return BigDecimal.ZERO;
+        } catch (SQLException e) {
+            throw new RuntimeException("balanceForAccount failed", e);
+        }
+    }
+
 }
