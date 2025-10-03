@@ -1,0 +1,52 @@
+@startuml
+title State pattern in "Personal Accounting"
+
+package app.model {
+  class Account {
+    - id : int
+    - name : String
+    - state : AccountState
+    --
+    + getState() : AccountState
+    + activate() : void
+    + block() : void
+    + close() : void
+  }
+}
+
+package app.patterns.state {
+  interface AccountState {
+    + ensureCanPost(type : String, amount : java.math.BigDecimal) : void
+    + name() : String
+  }
+
+  class ActiveState implements AccountState
+  class BlockedState implements AccountState
+  class ClosedState implements AccountState
+}
+
+package app.service {
+  class FinanceService {
+    + addIncome(user, account, category, amount, date, note) : Transaction
+    + addExpense(user, account, category, amount, date, note) : Transaction
+  }
+}
+
+package app.ui {
+  class AddTransactionPanel {
+    ..buttons..
+    + onFreeze()
+    + onUnfreeze()
+    + onClose()
+  }
+}
+
+' relationships
+Account "1" o- "1" AccountState : current\nstate
+AccountState <|.. ActiveState
+AccountState <|.. BlockedState
+AccountState <|.. ClosedState
+FinanceService --> AccountState : uses ensureCanPost(...)
+AddTransactionPanel --> Account : activate()/block()/close()
+
+@enduml
