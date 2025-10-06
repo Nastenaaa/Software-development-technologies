@@ -6,12 +6,14 @@ import app.model.User;
 import app.repo.AccountRepository;
 import app.repo.TransactionRepository;
 import app.service.ExportService;
+import app.patterns.prototype.PrototypeTransaction;
 
 import javax.swing.*;
 import javax.swing.table.DefaultTableModel;
 import java.awt.*;
 import java.io.File;
 import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -24,11 +26,18 @@ class TransactionsPanel extends JPanel {
 
     private final JTextField tfFrom = new JTextField(10);
     private final JTextField tfTo   = new JTextField(10);
-    private final JTable table = new JTable(new DefaultTableModel(
-            new Object[]{"Дата", "Сума", "Тип", "Нотатка"}, 0));
 
-    // NEW: баланс по рахунках
+    // Тепер показуємо рахунок і категорію
+    private final DefaultTableModel model = new DefaultTableModel(
+            new Object[]{"Дата", "Рахунок", "Категорія", "Тип", "Сума", "Нотатка"}, 0) {
+        @Override public boolean isCellEditable(int r, int c) { return false; }
+    };
+    private final JTable table = new JTable(model);
+
     private final JLabel lbBalances = new JLabel("Баланс: —");
+
+    // Кеш останнього набору, щоб зручно брати вибраний запис
+    private List<Transaction> current = new ArrayList<>();
 
     TransactionsPanel(User user,
                       TransactionRepository txRepo,
@@ -41,6 +50,7 @@ class TransactionsPanel extends JPanel {
 
         setLayout(new BorderLayout(8,8));
 
+        // Верхня панель керування
         JPanel top = new JPanel(new FlowLayout(FlowLayout.LEFT));
         top.add(new JLabel("Від:"));
         tfFrom.setText(LocalDate.now().minusMonths(1).toString());
@@ -56,11 +66,17 @@ class TransactionsPanel extends JPanel {
         });
         top.add(btnLoad);
 
+        JButton btnDuplicate = new JButton("Дублювати");
+        btnDuplicate.addActionListener(e -> {
+            duplicateSelected();
+            updateBalances();
+        });
+        top.add(btnDuplicate);
+
         JButton btnExport = new JButton("Експорт CSV");
         btnExport.addActionListener(e -> exportCsv());
         top.add(btnExport);
 
-        // NEW: трохи відступу і підпис з балансами
         top.add(Box.createHorizontalStrut(16));
         lbBalances.setFont(lbBalances.getFont().deriveFont(Font.BOLD));
         top.add(lbBalances);
@@ -68,39 +84,46 @@ class TransactionsPanel extends JPanel {
         add(top, BorderLayout.NORTH);
         add(new JScrollPane(table), BorderLayout.CENTER);
 
-        // початкове оновлення балансів
+        // Початковий стан
+        load();
         updateBalances();
+
+        table.setRowHeight(22);
+        table.setAutoCreateRowSorter(true);
     }
 
+    /** Завантаження транзакцій у таблицю та кеш */
     private void load() {
         try {
             LocalDate from = LocalDate.parse(tfFrom.getText().trim());
             LocalDate to   = LocalDate.parse(tfTo.getText().trim());
-            List<Transaction> list = txRepo.findByUserAndPeriod(user, from, to);
+            current = txRepo.findByUserAndPeriod(user, from, to);
 
-            DefaultTableModel m = (DefaultTableModel) table.getModel();
-            m.setRowCount(0);
-            for (Transaction t : list) {
-                m.addRow(new Object[]{
+            model.setRowCount(0);
+            for (Transaction t : current) {
+                String accName = (t.getAccount()  != null) ? t.getAccount().getName()  : "";
+                String catName = (t.getCategory() != null) ? t.getCategory().getName() : "";
+                model.addRow(new Object[]{
                         t.getDate(),
-                        t.getAmount(),
+                        accName,
+                        catName,
                         t.getType(),
+                        t.getAmount(),
                         t.getNote()
                 });
             }
         } catch (Exception ex) {
             ex.printStackTrace();
-            JOptionPane.showMessageDialog(this, "Помилка: " + ex.getMessage(),
+            JOptionPane.showMessageDialog(this, "Помилка завантаження: " + ex.getMessage(),
                     "Error", JOptionPane.ERROR_MESSAGE);
         }
     }
 
-    // NEW: оновлення підпису з балансами
+    /** Текстовий підсумок балансів по кожному рахунку */
     private void updateBalances() {
         try {
             var balances = txRepo.balancesByUser(user.getId()); // Map<accountId, BigDecimal>
 
-            // Підтягнути назви рахунків
             Map<Integer, String> names = new HashMap<>();
             for (Account a : accountRepo.findByUser(user)) {
                 names.put(a.getId(), a.getName());
@@ -113,11 +136,37 @@ class TransactionsPanel extends JPanel {
             });
             lbBalances.setText(sb.toString());
         } catch (Exception ex) {
-            // якщо щось пішло не так — не валимо UI
             lbBalances.setText("Баланс: (помилка)");
         }
     }
 
+    /**Prototype: */
+    private void duplicateSelected() {
+        int viewRow = table.getSelectedRow();
+        if (viewRow < 0) {
+            JOptionPane.showMessageDialog(this, "Виберіть рядок у таблиці для дублювання.");
+            return;
+        }
+        int row = table.convertRowIndexToModel(viewRow);
+        if (row < 0 || row >= current.size()) return;
+
+        Transaction original = current.get(row);
+        try {
+            Transaction clone = PrototypeTransaction
+                    .from(original)
+                    .copyWith(LocalDate.now(), null, "Повтор: " + (original.getNote() == null ? "" : original.getNote()));
+
+            txRepo.save(clone);
+            JOptionPane.showMessageDialog(this, "Створено копію транзакції.");
+            load();
+        } catch (Exception ex) {
+            ex.printStackTrace();
+            JOptionPane.showMessageDialog(this, "Не вдалося дублювати: " + ex.getMessage(),
+                    "Error", JOptionPane.ERROR_MESSAGE);
+        }
+    }
+
+    /** Експорт у CSV через сервіс */
     private void exportCsv() {
         try {
             LocalDate from = LocalDate.parse(tfFrom.getText().trim());
