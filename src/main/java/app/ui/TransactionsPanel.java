@@ -166,7 +166,7 @@ class TransactionsPanel extends JPanel {
         }
     }
 
-    /** Експорт у CSV через сервіс */
+
     private void exportCsv() {
         try {
             LocalDate from = LocalDate.parse(tfFrom.getText().trim());
