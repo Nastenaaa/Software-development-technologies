@@ -20,7 +20,7 @@ public class AddTransactionPanel extends JPanel {
     private final User user;
     private final AccountRepository accountRepo;
     private final CategoryRepository categoryRepo;
-    private final TransactionRepository txRepo;     // ← Потрібно для балансу
+    private final TransactionRepository txRepo;
     private final FinanceService finance;
 
     // UI
@@ -99,13 +99,12 @@ public class AddTransactionPanel extends JPanel {
 
         // Слухачі
         cbType.addActionListener(e -> reloadCategories());
-        cbAccount.addActionListener(e -> updateStateUI()); // змінюємо рахунок → оновлюємо стан
-
+        cbAccount.addActionListener(e -> updateStateUI());
         // Початкові значення
         tfDate.setText(LocalDate.now().toString());
         reloadAccounts();
         reloadCategories();
-        updateStateUI(); // один раз після побудови
+        updateStateUI();
     }
 
     /* ---------- UI helpers ---------- */
@@ -150,7 +149,7 @@ public class AddTransactionPanel extends JPanel {
                         "Неможливо закрити", JOptionPane.WARNING_MESSAGE);
                 return;
             }
-            acc.close();               // ACTIVE/BLOCKED → CLOSED
+            acc.close();
             updateStateUI();
         });
 
@@ -201,13 +200,12 @@ public class AddTransactionPanel extends JPanel {
     }
 
     private BigDecimal currentBalanceFor(Account acc) {
-        // З карти балансів користувача беремо баланс саме цього рахунку
         return txRepo
                 .balancesByUser(user.getId())
                 .getOrDefault(acc.getId(), BigDecimal.ZERO);
     }
 
-    /* ---------- Data loaders ---------- */
+
 
     private void reloadAccounts() {
         cbAccount.removeAllItems();
@@ -223,7 +221,7 @@ public class AddTransactionPanel extends JPanel {
         for (Category cat : cats) cbCategory.addItem(cat);
     }
 
-    /* ---------- Save ---------- */
+
 
     private void onSave() {
         try {
@@ -248,7 +246,7 @@ public class AddTransactionPanel extends JPanel {
             JOptionPane.showMessageDialog(this, "Збережено");
             tfAmount.setText("");
             tfNote.setText("");
-            // після успішної операції оновлюємо панель (баланс міг змінитись → впливає на доступність «Закрити»)
+
             updateStateUI();
 
         } catch (Exception ex) {

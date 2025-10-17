@@ -38,7 +38,7 @@ public class FooterTotalsDecorator extends AbstractExportDecorator {
             if ("INCOME".equalsIgnoreCase(t.getType())) {
                 income = income.add(t.getAmount());
             } else if ("EXPENSE".equalsIgnoreCase(t.getType())) {
-                expense = expense.add(t.getAmount()); // у тебе витрати від’ємні — ок
+                expense = expense.add(t.getAmount());
             }
         }
         BigDecimal net = income.add(expense);

@@ -14,7 +14,6 @@ import java.util.stream.Stream;
 
 public class CsvExporter implements Exporter {
     private final TransactionRepository txRepo;
-
     public CsvExporter(TransactionRepository txRepo) {
         this.txRepo = Objects.requireNonNull(txRepo);
     }

@@ -27,7 +27,6 @@ class TransactionsPanel extends JPanel {
     private final JTextField tfFrom = new JTextField(10);
     private final JTextField tfTo   = new JTextField(10);
 
-    // Тепер показуємо рахунок і категорію
     private final DefaultTableModel model = new DefaultTableModel(
             new Object[]{"Дата", "Рахунок", "Категорія", "Тип", "Сума", "Нотатка"}, 0) {
         @Override public boolean isCellEditable(int r, int c) { return false; }
@@ -77,6 +76,10 @@ class TransactionsPanel extends JPanel {
         btnExport.addActionListener(e -> exportCsv());
         top.add(btnExport);
 
+        JButton btnExportHtml = new JButton("Експорт HTML");
+        btnExportHtml.addActionListener(e -> exportHtml());
+        top.add(btnExportHtml);
+
         top.add(Box.createHorizontalStrut(16));
         lbBalances.setFont(lbBalances.getFont().deriveFont(Font.BOLD));
         top.add(lbBalances);
@@ -84,7 +87,7 @@ class TransactionsPanel extends JPanel {
         add(top, BorderLayout.NORTH);
         add(new JScrollPane(table), BorderLayout.CENTER);
 
-        // Початковий стан
+
         load();
         updateBalances();
 
@@ -92,7 +95,7 @@ class TransactionsPanel extends JPanel {
         table.setAutoCreateRowSorter(true);
     }
 
-    /** Завантаження транзакцій у таблицю та кеш */
+
     private void load() {
         try {
             LocalDate from = LocalDate.parse(tfFrom.getText().trim());
@@ -119,7 +122,7 @@ class TransactionsPanel extends JPanel {
         }
     }
 
-    /** Текстовий підсумок балансів по кожному рахунку */
+
     private void updateBalances() {
         try {
             var balances = txRepo.balancesByUser(user.getId()); // Map<accountId, BigDecimal>
@@ -140,7 +143,7 @@ class TransactionsPanel extends JPanel {
         }
     }
 
-    /**Prototype: */
+
     private void duplicateSelected() {
         int viewRow = table.getSelectedRow();
         if (viewRow < 0) {
@@ -166,12 +169,24 @@ class TransactionsPanel extends JPanel {
         }
     }
 
-
     private void exportCsv() {
         try {
             LocalDate from = LocalDate.parse(tfFrom.getText().trim());
             LocalDate to   = LocalDate.parse(tfTo.getText().trim());
             File f = exportService.exportTransactions(user, from, to, ExportService.Format.CSV);
+            JOptionPane.showMessageDialog(this, "Експортовано у файл:\n" + f.getAbsolutePath());
+        } catch (Exception ex) {
+            ex.printStackTrace();
+            JOptionPane.showMessageDialog(this, "Помилка експорту: " + ex.getMessage(),
+                    "Error", JOptionPane.ERROR_MESSAGE);
+        }
+    }
+
+    private void exportHtml() {
+        try {
+            LocalDate from = LocalDate.parse(tfFrom.getText().trim());
+            LocalDate to   = LocalDate.parse(tfTo.getText().trim());
+            File f = exportService.exportTransactions(user, from, to, ExportService.Format.HTML);
             JOptionPane.showMessageDialog(this, "Експортовано у файл:\n" + f.getAbsolutePath());
         } catch (Exception ex) {
             ex.printStackTrace();
