@@ -80,6 +80,16 @@ class TransactionsPanel extends JPanel {
         btnExportHtml.addActionListener(e -> exportHtml());
         top.add(btnExportHtml);
 
+        JButton btnStats = new JButton("Flyweight Info");
+        btnStats.addActionListener(e ->
+                JOptionPane.showMessageDialog(this,
+                        app.patterns.flyweight.FlyweightStats.snapshot(),
+                        "Flyweight Cache",
+                        JOptionPane.INFORMATION_MESSAGE)
+        );
+        top.add(btnStats);
+
+
         top.add(Box.createHorizontalStrut(16));
         lbBalances.setFont(lbBalances.getFont().deriveFont(Font.BOLD));
         top.add(lbBalances);
@@ -101,6 +111,34 @@ class TransactionsPanel extends JPanel {
             LocalDate from = LocalDate.parse(tfFrom.getText().trim());
             LocalDate to   = LocalDate.parse(tfTo.getText().trim());
             current = txRepo.findByUserAndPeriod(user, from, to);
+
+
+            for (int i = 0; i < current.size(); i++) {
+                var t = current.get(i);
+
+
+                if (t.getAccount() != null) {
+                    var a0 = t.getAccount();
+                    var a  = app.patterns.flyweight.AccountFlyweightFactory.get(
+                            a0.getId(),
+                            a0.getUser() != null ? a0.getUser() : user,
+                            a0.getName(),
+                            a0.getCurrency(),
+                            a0.getType()
+                    );
+                    t.setAccount(a);
+                }
+
+
+                if (t.getCategory() != null) {
+                    var c0 = t.getCategory();
+                    var c  = app.patterns.flyweight.CategoryFlyweightFactory.get(
+                            c0.getId(),
+                            c0.getName()
+                    );
+                    t.setCategory(c);
+                }
+            }
 
             model.setRowCount(0);
             for (Transaction t : current) {
